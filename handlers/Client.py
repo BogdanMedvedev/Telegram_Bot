@@ -55,15 +55,18 @@ async def read_cart(message: types.Message, state: FSMContext, button=False):
     if await state.get_state() is None:
         button = True
     cart = dict()
-    for i, j in enumerate(await sql_read_cart(message.chat.username), 1):
-        cart[f'{i}) {j[0]}'] = j[1]
-    position = '\n'.join([f"{i[0]} - {i[1]} руб." for i in cart.items()])
-    if not cart:
-        await message.answer('🧺 Сейчас Ваша корзина пуста. Добавьте что-то из меню ⬇️',
-                             reply_markup=keyboard_hide(button))
-    else:
-        await message.answer(f'\n\n{position}\n\n<b>Итого</b>: {sum(map(float, cart.values()))} руб.',
-                             reply_markup=cart_keyboard(), parse_mode='html')
+    try:
+        for i, j in enumerate(await sql_read_cart(message.chat.username), 1):
+            cart[f'{i}) {j[0]}'] = j[1]
+        position = '\n'.join([f"{i[0]} - {i[1]} руб." for i in cart.items()])
+        if not cart:
+            await message.answer('🧺 Сейчас Ваша корзина пуста. Добавьте что-то из меню ⬇️',
+                                 reply_markup=keyboard_hide(button))
+        else:
+            await message.answer(f'\n\n{position}\n\n<b>Итого</b>: {sum(map(float, cart.values()))} руб.',
+                                 reply_markup=cart_keyboard(), parse_mode='html')
+    except:
+        await message.answer('Произошла непредвиденная ошибка')
 
 
 # Реакция на /menu - открывается клавиатура с категориями меню
@@ -81,30 +84,42 @@ async def opening_menu(callback: types.CallbackQuery):
 # Реакция на команду "Бурегы", "Пиица" и т.д. - отправляются все позиции из выбранной категории
 async def open_category(message: types.Message):
     await message.delete()
-    for i in await sql_category_menu(message.text):
-        await bot.send_photo(message.from_user.id, i[0],
-                             f"Наименование товара: <i>{i[1]}</i>\nОписание: <i>{i[2]}</i>\n\n<b>Цена:</b> {i[3]} руб.",
-                             reply_markup=cart_add_keyboard(), parse_mode='html')
+    try:
+        for i in await sql_category_menu(message.text):
+            await bot.send_photo(message.from_user.id, i[0],
+                                 f"Наименование товара: <i>{i[1]}</i>\nОписание: <i>{i[2]}</i>\n\n<b>Цена:</b> {i[3]} руб.",
+                                 reply_markup=cart_add_keyboard(), parse_mode='html')
+    except:
+        await message.answer('Произошла непредвиденная ошибка')
 
 
 # Реакция на команду "Показать всё" - отправляются все позиции из всех категорий
 async def open_all_menu(message: types.Message):
     await message.delete()
-    for i in await sql_send_menu():
-        await bot.send_photo(message.from_user.id, i[0],
-                             f"Наименование товара: <i>{i[1]}</i>\nОписание: <i>{i[2]}</i>\n\n<b>Цена:</b> {i[3]} руб.",
-                             reply_markup=cart_add_keyboard(), parse_mode='html')
+    try:
+        for i in await sql_send_menu():
+            await bot.send_photo(message.from_user.id, i[0],
+                                 f"Наименование товара: <i>{i[1]}</i>\nОписание: <i>{i[2]}</i>\n\n<b>Цена:</b> {i[3]} руб.",
+                                 reply_markup=cart_add_keyboard(), parse_mode='html')
+    except:
+        await message.answer('Произошла непредвиденная ошибка')
 
 
 # Удаление текущего сообщения, реакция на команду "Скрыть"
 async def close_keyboard(callback: types.CallbackQuery):
-    await callback.message.delete()
+    try:
+        await callback.message.delete()
+    except:
+        return
 
 
 # Удаление текущего сообщения и очистка бащы данных с информацией о лайках и дизлайках
 async def close_flag(callback: types.CallbackQuery):
     await callback.message.delete()
-    await sql_clear_flag(callback.message.chat.username, callback.message.message_id)
+    try:
+        await sql_clear_flag(callback.message.chat.username, callback.message.message_id)
+    except:
+        await callback.message.answer('Произошла непредвиденная ошибка')
 
 
 # Реакция на "Показать ретсоран на карте" - отправляются координаты ресторана (карта)
@@ -137,7 +152,10 @@ async def add_cart(callback: types.CallbackQuery, state: FSMContext):
         data['id'] = callback.message.chat.username
         data['name'], = findall(r'товара: (.*)\n', callback.message.caption)
         data['price'], = findall('\d+\.\d+', callback.message.caption)
-    await sql_add_cart(state)
+    try:
+        await sql_add_cart(state)
+    except:
+        await callback.message.answer('Произошла непредвиденная ошибка')
     await callback.answer('ДОБАВЛЕНО!')
 
 
